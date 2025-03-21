@@ -2,7 +2,7 @@
 
 **Advanced Recon Automation Toolkit** for bug bounty hunters, red teamers, and ethical hackers.
 
-Rectron+ combines the most powerful open-source recon tools into one modular, CLI-based Bash script — giving you fast, flexible, and focused recon capabilities.
+Rectron combines the most powerful open-source recon tools into one modular, CLI-based Bash script — giving you fast, flexible, and focused recon capabilities.
 
 ---
 
@@ -55,7 +55,7 @@ This script installs all dependencies including:
 chmod +x rectron.sh
 ```
 
-### 🎯 Run Rectron+:
+### 🎯 Run Rectron:
 ```bash
 ./rectron.sh -d example.com --full         # Full recon scan
 ./rectron.sh -d example.com --quick        # Subdomains + live check only
