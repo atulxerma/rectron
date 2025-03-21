@@ -92,7 +92,7 @@ fi
 # === NUCLEI ===
 if [ "$RUN_ALL" = true ] || [ "$RUN_NUCLEI" = true ]; then
     echo -e "${BLUE}[+] Running Nuclei${NC}"
-    nuclei -l "$WORKDIR/targets/live.txt" -t cves,misconfiguration,exposed-panels,takeovers -silent -c 50 -o "$WORKDIR/nuclei/nuclei_all.txt"
+    nuclei -l "$WORKDIR/targets/katana_urls.txt" -t cves,misconfiguration,exposed-panels,takeovers -silent -c 50 -o "$WORKDIR/nuclei/nuclei_all.txt"
     echo -e "${GREEN}[✓] Nuclei complete${NC}"
 fi
 
