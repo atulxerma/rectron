@@ -14,7 +14,6 @@ RUN_NUCLEI=false
 RUN_JS=false
 RUN_ARJUN=false
 RUN_TAKEOVER=false
-RUN_KATANA=false
 DOMAIN=""
 
 # === Parse CLI Flags ===
@@ -26,7 +25,6 @@ while [[ "$#" -gt 0 ]]; do
         --js-scan) RUN_ALL=false; RUN_JS=true ;;
         --arjun) RUN_ALL=false; RUN_ARJUN=true ;;
         --takeover) RUN_ALL=false; RUN_TAKEOVER=true ;;
-        --katana) RUN_ALL=false; RUN_KATANA=true ;;
         -h|--help)
             echo -e "${YELLOW}Usage: $0 -d <domain> [options]${NC}"
             echo "  --quick         Run subdomain enum + live hosts only"
@@ -34,7 +32,6 @@ while [[ "$#" -gt 0 ]]; do
             echo "  --js-scan       Run only JavaScript file scraping"
             echo "  --arjun         Run only parameter fuzzing"
             echo "  --takeover      Run only subdomain takeover checks"
-            echo "  --katana        Run only Katana URL crawler"
             exit 0 ;;
         *) echo -e "${RED}[!] Unknown option: $1${NC}"; exit 1 ;;
     esac
@@ -49,7 +46,7 @@ fi
 echo -e "${YELLOW}[-] Starting Rectron+ for domain: ${BLUE}$DOMAIN${NC}"
 
 # === Setup ===
-REQUIRED_TOOLS=(amass subfinder assetfinder httpx nuclei katana gf subjack naabu arjun getJS waybackurls)
+REQUIRED_TOOLS=(amass subfinder assetfinder httpx nuclei gau gf subjack naabu arjun getJS waybackurls)
 
 for tool in "${REQUIRED_TOOLS[@]}"; do
     if ! command -v $tool &> /dev/null; then
@@ -85,11 +82,11 @@ if [ "$RUN_ALL" = true ] || [ "$RUN_SUBDOMAINS" = true ]; then
     naabu -list "$WORKDIR/targets/live.txt" -top-100 -silent -o "$WORKDIR/targets/ports.txt"
     echo -e "${GREEN}[✓] Ports scanned${NC}"
 
-    echo -e "${BLUE}[+] Crawling URLs with Katana${NC}"
-    katana -list "$WORKDIR/targets/live.txt" -silent -o "$WORKDIR/targets/katana_urls.txt"
-    echo -e "${GREEN}[✓] Katana URL crawl complete${NC}"
+    echo -e "${BLUE}[+] Gathering URLs with gau${NC}"
+    gau "$DOMAIN" --subs > "$WORKDIR/targets/gau_urls.txt"
+    echo -e "${GREEN}[✓] gau URL collection complete${NC}"
 
-    cat "$WORKDIR/targets/katana_urls.txt" "$WORKDIR/targets/live.txt" | sort -u > "$WORKDIR/targets/urls_combined.txt"
+    cat "$WORKDIR/targets/gau_urls.txt" "$WORKDIR/targets/live.txt" | sort -u > "$WORKDIR/targets/urls_combined.txt"
     echo -e "${GREEN}[✓] Combined URL list created${NC}"
 fi
 
@@ -122,14 +119,6 @@ if [ "$RUN_ALL" = true ] || [ "$RUN_TAKEOVER" = true ]; then
     echo -e "${BLUE}[+] Running Subjack for Takeovers${NC}"
     subjack -w "$WORKDIR/targets/all_subs.txt" -ssl -t 100 -o "$WORKDIR/targets/takeovers.txt"
     echo -e "${GREEN}[✓] Takeover check complete${NC}"
-fi
-
-# === KATANA STANDALONE ===
-if [ "$RUN_KATANA" = true ]; then
-    echo -e "${BLUE}[+] Running Katana (Standalone Mode)${NC}"
-    katana -list "$WORKDIR/targets/live.txt" -silent -o "$WORKDIR/targets/katana_urls.txt"
-    cat "$WORKDIR/targets/katana_urls.txt" "$WORKDIR/targets/live.txt" | sort -u > "$WORKDIR/targets/urls_combined.txt"
-    echo -e "${GREEN}[✓] Katana standalone mode complete${NC}"
 fi
 
 # === Done ===
