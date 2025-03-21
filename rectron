@@ -46,7 +46,7 @@ fi
 echo -e "${YELLOW}[-] Starting Rectron+ for domain: ${BLUE}$DOMAIN${NC}"
 
 # === Setup ===
-REQUIRED_TOOLS=(amass subfinder assetfinder httpx nuclei gau gf subjack naabu arjun getJS waybackurls)
+REQUIRED_TOOLS=(amass subfinder assetfinder httpx nuclei katana gf subjack naabu arjun getJS waybackurls)
 
 for tool in "${REQUIRED_TOOLS[@]}"; do
     if ! command -v $tool &> /dev/null; then
@@ -78,9 +78,15 @@ if [ "$RUN_ALL" = true ] || [ "$RUN_SUBDOMAINS" = true ]; then
     httpx -silent -t 100 -l "$WORKDIR/targets/all_subs.txt" -o "$WORKDIR/targets/live.txt"
     echo -e "${GREEN}[✓] Live Hosts: $(wc -l < "$WORKDIR/targets/live.txt")${NC}"
 
-    echo -e "${BLUE}[+] Port Scan with Naabu${NC}"
+        echo -e "${BLUE}[+] Port Scan with Naabu${NC}"
     naabu -list "$WORKDIR/targets/live.txt" -top-100 -silent -o "$WORKDIR/targets/ports.txt"
     echo -e "${GREEN}[✓] Ports scanned${NC}"
+
+    echo -e "${BLUE}[+] Crawling URLs with Katana${NC}"
+    katana -list "$WORKDIR/targets/live.txt" -silent -o "$WORKDIR/targets/katana_urls.txt"
+    echo -e "${GREEN}[✓] Katana URL crawl complete${NC}"
+
+
 fi
 
 # === NUCLEI ===
