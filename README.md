@@ -40,7 +40,7 @@ This script installs all dependencies including:
 - `nuclei`
 - `subjack`
 - `naabu`
-- `gau`
+- `katana`
 - `waybackurls`
 - `getJS`
 - `arjun`
