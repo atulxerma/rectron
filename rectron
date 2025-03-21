@@ -45,13 +45,11 @@ fi
 
 echo -e "${YELLOW}[-] Starting Rectron+ for domain: ${BLUE}$DOMAIN${NC}"
 
-# === Setup ===
 REQUIRED_TOOLS=(amass subfinder assetfinder httpx nuclei gau gf subjack naabu arjun getJS waybackurls)
 
 for tool in "${REQUIRED_TOOLS[@]}"; do
     if ! command -v $tool &> /dev/null; then
-        echo -e "${RED}[!] Missing: $tool${NC} — Install before running."
-        exit 1
+        echo -e "${YELLOW}[!] Warning: $tool not found in PATH${NC}"
     fi
 done
 
