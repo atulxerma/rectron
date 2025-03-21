@@ -26,3 +26,34 @@ Make sure Go is installed and your `$GOPATH` is configured. Then run:
 
 ```bash
 ./install_rectron_tools.sh
+```
+This script installs all dependencies
+
+🚀 Usage
+🔧 Make it executable:
+```bash
+chmod +x rectron_plus.sh
+```
+
+🎯 Basic Commands:
+```bash
+./rectron_plus.sh -d example.com --full        # Full scan
+./rectron_plus.sh -d example.com --quick       # Subdomain + live check only
+./rectron_plus.sh -d example.com --nuclei      # Nuclei scans only
+./rectron_plus.sh -d example.com --js-scan     # JS scraping only
+./rectron_plus.sh -d example.com --arjun       # Param fuzzing only
+./rectron_plus.sh -d example.com --takeover    # Subdomain takeover check
+```
+🧩 CLI Flags
+Option	Description
+-d	(Required) Target domain to scan
+--quick	Subdomains + live host check
+--full	Full recon scan (default if no flag given)
+--nuclei	Run Nuclei scans only
+--js-scan	Scrape JS files and extract endpoints
+--arjun	Run parameter fuzzing with Arjun
+--takeover	Check for subdomain takeovers using Subjack
+--help	Show usage instructions
+
+
+
