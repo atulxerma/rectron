@@ -1,0 +1,125 @@
+#!/bin/bash
+
+# ====================================
+# Rectron CLI - Advanced Recon Engine
+# Author: @atulxerma
+# ====================================
+
+RED="\033[0;31m"; GREEN="\033[0;32m"; YELLOW="\033[1;33m"; BLUE="\033[0;34m"; NC="\033[0m"
+
+# === Default: Everything runs ===
+RUN_ALL=true
+RUN_SUBDOMAINS=false
+RUN_NUCLEI=false
+RUN_JS=false
+RUN_ARJUN=false
+RUN_TAKEOVER=false
+DOMAIN=""
+
+# === Parse CLI Flags ===
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        -d|--domain) DOMAIN="$2"; shift ;;
+        --quick) RUN_ALL=false; RUN_SUBDOMAINS=true ;;
+        --nuclei) RUN_ALL=false; RUN_NUCLEI=true ;;
+        --js-scan) RUN_ALL=false; RUN_JS=true ;;
+        --arjun) RUN_ALL=false; RUN_ARJUN=true ;;
+        --takeover) RUN_ALL=false; RUN_TAKEOVER=true ;;
+        -h|--help)
+            echo -e "${YELLOW}Usage: $0 -d <domain> [options]${NC}"
+            echo "  --quick         Run subdomain enum + live hosts only"
+            echo "  --nuclei        Run only Nuclei scans"
+            echo "  --js-scan       Run only JavaScript file scraping"
+            echo "  --arjun         Run only parameter fuzzing"
+            echo "  --takeover      Run only subdomain takeover checks"
+            exit 0 ;;
+        *) echo -e "${RED}[!] Unknown option: $1${NC}"; exit 1 ;;
+    esac
+    shift
+done
+
+if [ -z "$DOMAIN" ]; then
+    echo -e "${RED}[!] Please provide a domain with -d${NC}"
+    exit 1
+fi
+
+echo -e "${YELLOW}[-] Starting Rectron+ for domain: ${BLUE}$DOMAIN${NC}"
+
+# === Setup ===
+REQUIRED_TOOLS=(amass subfinder assetfinder httpx nuclei gau gf subjack naabu arjun getJS waybackurls)
+
+for tool in "${REQUIRED_TOOLS[@]}"; do
+    if ! command -v $tool &> /dev/null; then
+        echo -e "${RED}[!] Missing: $tool${NC} — Install before running."
+        exit 1
+    fi
+done
+
+TIMESTAMP=$(date +%Y-%m-%d_%H-%M)
+WORKDIR="output/${DOMAIN}_${TIMESTAMP}"
+mkdir -p "$WORKDIR"/{targets,nuclei,gf,logs,js,paramscan}
+
+# === SUBDOMAIN ENUM ===
+if [ "$RUN_ALL" = true ] || [ "$RUN_SUBDOMAINS" = true ]; then
+    echo -e "${BLUE}[+] Enumerating Subdomains${NC}"
+    (
+        amass enum -passive -d "$DOMAIN" -o "$WORKDIR/targets/amass_passive.txt"
+        amass enum -brute -d "$DOMAIN" -o "$WORKDIR/targets/amass_brute.txt"
+    ) &
+    (
+        subfinder -d "$DOMAIN" -silent -o "$WORKDIR/targets/subfinder.txt"
+        echo "$DOMAIN" | assetfinder --subs-only > "$WORKDIR/targets/assetfinder.txt"
+    ) &
+    wait
+    cat "$WORKDIR/targets/"*.txt | sort -u > "$WORKDIR/targets/all_subs.txt"
+    echo -e "${GREEN}[✓] Subdomains collected: $(wc -l < "$WORKDIR/targets/all_subs.txt")${NC}"
+
+    echo -e "${BLUE}[+] Checking Live Hosts${NC}"
+    httpx -silent -t 100 -l "$WORKDIR/targets/all_subs.txt" -o "$WORKDIR/targets/live.txt"
+    echo -e "${GREEN}[✓] Live Hosts: $(wc -l < "$WORKDIR/targets/live.txt")${NC}"
+
+    echo -e "${BLUE}[+] Port Scan with Naabu${NC}"
+    naabu -list "$WORKDIR/targets/live.txt" -top-100 -silent -o "$WORKDIR/targets/ports.txt"
+    echo -e "${GREEN}[✓] Ports scanned${NC}"
+fi
+
+# === NUCLEI ===
+if [ "$RUN_ALL" = true ] || [ "$RUN_NUCLEI" = true ]; then
+    echo -e "${BLUE}[+] Running Nuclei${NC}"
+    nuclei -l "$WORKDIR/targets/live.txt" -t cves,misconfiguration,exposed-panels,takeovers -silent -c 50 -o "$WORKDIR/nuclei/nuclei_all.txt"
+    echo -e "${GREEN}[✓] Nuclei complete${NC}"
+fi
+
+# === JS SCRAPER ===
+if [ "$RUN_ALL" = true ] || [ "$RUN_JS" = true ]; then
+    echo -e "${BLUE}[+] Scraping JS Files${NC}"
+    getJS --complete -input "$WORKDIR/targets/live.txt" > "$WORKDIR/js/jsfiles.txt"
+    while read -r js; do
+        linkfinder -i "$js" -o cli >> "$WORKDIR/js/endpoints.txt"
+    done < "$WORKDIR/js/jsfiles.txt"
+    echo -e "${GREEN}[✓] JS endpoints scraped${NC}"
+fi
+
+# === ARJUN ===
+if [ "$RUN_ALL" = true ] || [ "$RUN_ARJUN" = true ]; then
+    echo -e "${BLUE}[+] Discovering Hidden Params with Arjun${NC}"
+    arjun -i "$WORKDIR/targets/live.txt" -oT "$WORKDIR/paramscan/arjun_params.txt" > /dev/null
+    echo -e "${GREEN}[✓] Param fuzzing complete${NC}"
+fi
+
+# === SUBJACK ===
+if [ "$RUN_ALL" = true ] || [ "$RUN_TAKEOVER" = true ]; then
+    echo -e "${BLUE}[+] Running Subjack for Takeovers${NC}"
+    subjack -w "$WORKDIR/targets/all_subs.txt" -ssl -t 100 -o "$WORKDIR/targets/takeovers.txt"
+    echo -e "${GREEN}[✓] Takeover check complete${NC}"
+fi
+
+# === Done ===
+echo ""
+echo -e "${YELLOW}========== Rectron+ Summary ==========${NC}"
+echo -e "${YELLOW}[-] Domain       : $DOMAIN${NC}"
+echo -e "${YELLOW}[-] Output Dir   : $WORKDIR${NC}"
+echo -e "${YELLOW}[-] Timestamp    : $TIMESTAMP${NC}"
+echo -e "${YELLOW}[-] Mode         : $( [ "$RUN_ALL" = true ] && echo Full || echo Custom )${NC}"
+echo -e "${YELLOW}======================================${NC}"
+echo -e "${GREEN}[-] Mission Complete. Happy Hacking. 💀${NC}"
